@@ -191,7 +191,7 @@ const GistSync = {
     },
 
     _applyPayload(p) {
-        // 保留 onboarded 標記不被覆蓋
+        // 保留本地 onboarded/onboardedAt 標記，避免從雲端拉回後又跳引導精靈
         const currentSettings = Storage.getSettings();
 
         if (p.trades && Array.isArray(p.trades)) {
@@ -201,7 +201,11 @@ const GistSync = {
             Storage.saveNetValues(p.netValues);
         }
         if (p.settings && typeof p.settings === 'object') {
-            Storage.saveSettings({ ...p.settings });
+            Storage.saveSettings({
+                ...p.settings,
+                onboarded: currentSettings.onboarded || p.settings.onboarded,
+                onboardedAt: currentSettings.onboardedAt || p.settings.onboardedAt
+            });
         }
         if (p.portfolio && typeof p.portfolio === 'object') {
             Storage.savePortfolioCache(p.portfolio, true);
