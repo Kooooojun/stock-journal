@@ -1,5 +1,12 @@
 // app.js - 主程式入口
 
+// App 命名空間，供 Onboarding 呼叫
+const App = {
+    initAfterOnboarding() {
+        _initApp();
+    }
+};
+
 // Modal 通用元件
 const Modal = {
     show({ title, fields, onSubmit, afterRender }) {
@@ -199,16 +206,13 @@ function initExportImport() {
     });
 }
 
-// 初始化
-document.addEventListener('DOMContentLoaded', async () => {
-    initTabs();
-    initModal();
-    initExportImport();
-    
+// 主要初始化邏輯（onboarding 完成後呼叫）
+async function _initApp() {
     // 初始化各頁面（先從 localStorage 渲染畫面，確保物件已就緒）
     Portfolio.init();
     NetValue.init();
     Trades.init();
+    Settings.init();
 
     // 從 Google Sheet 同步資料
     if (typeof ApiClient !== 'undefined') {
@@ -294,4 +298,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     console.log('股票記帳 App 已載入');
+}
+
+// 初始化
+document.addEventListener('DOMContentLoaded', () => {
+    initTabs();
+    initModal();
+    initExportImport();
+
+    // 首次使用引導；若已完成則直接初始化
+    if (!Onboarding.check()) {
+        // Onboarding.check() 回傳 false 表示正在顯示引導精靈，等待完成後呼叫 App.initAfterOnboarding()
+        return;
+    }
+
+    _initApp();
 });

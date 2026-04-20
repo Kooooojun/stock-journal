@@ -108,6 +108,10 @@
                     <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"></line><line x1="18" y1="20" x2="18" y2="4"></line><line x1="6" y1="20" x2="6" y2="16"></line></svg>
                     <span>交易紀錄</span>
                 </button>
+                <button class="tab-btn" data-tab="settings">
+                    <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                    <span>設定</span>
+                </button>
             </nav>
             <div class="header-actions">
                 <button id="sync-data" class="btn btn-primary btn-small">
@@ -409,6 +413,27 @@
                 </table>
             </div>
         </section>
+
+        <!-- Page 4: Settings -->
+        <section id="settings" class="tab-content">
+            <div class="page-header">
+                <h2>設定</h2>
+            </div>
+
+            <div class="settings-page">
+                <!-- 3-1 基本設定 -->
+                <section id="settings-basic" class="settings-block">
+                </section>
+
+                <!-- 3-2 資料管理 -->
+                <section id="settings-data" class="settings-block">
+                </section>
+
+                <!-- 3-3 Gist 同步 -->
+                <section id="gist-sync-section" class="settings-block">
+                </section>
+            </div>
+        </section>
     </div>
 
     <!-- Modal for adding/editing -->
@@ -438,10 +463,12 @@
     <script src="js/api_client.js?v=6"></script>
     <script src="js/stock_names.js?v=2"></script>
     <script src="js/storage.js?v=8"></script>
+    <script src="js/onboarding.js?v=1"></script>
     <script src="js/api.js?v=4"></script>
     <script src="js/portfolio.js?v=4"></script>
     <script src="js/netValue.js?v=10"></script>
     <script src="js/trades.js?v=7"></script>
+    <script src="js/settings.js?v=1"></script>
     <script src="js/app.js?v=5"></script>
 </body>
 </html>
