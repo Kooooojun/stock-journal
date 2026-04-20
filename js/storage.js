@@ -524,7 +524,9 @@ const Storage = {
     getSettings() {
         return this.get(this.KEYS.SETTINGS) || {
             cash: 0,
-            initialCapital: 20000000,
+            initialCapital: 0,
+            commissionRate: 0.001425,
+            commissionDiscount: 0.6,
             lastUpdate: null
         };
     },
@@ -546,19 +548,21 @@ const Storage = {
     },
 
     // 計算買入手續費
-    calculateBuyFee(price, quantity) {
-        const FEE_RATE = 0.001425*0.6;      // 手續費 0.1425%*0.6 0.6 是手續費打折
-        const MIN_FEE = 20;             // 最低手續費 20 元
+    calculateBuyFee(price, quantity, settings) {
+        const s = settings || this.getSettings();
+        const FEE_RATE = s.commissionRate * s.commissionDiscount; // 手續費率 × 折扣
+        const MIN_FEE = 20;             // 最低手續費 20 元（法規固定值）
         const amount = price * quantity * 1000; // 張數 * 1000 股
         return Math.max(Math.round(amount * FEE_RATE), MIN_FEE);
     },
 
     // 計算賣出手續費和交易稅（根據當前價格）
-    calculateSellFees(price, quantity, isETF = false) {
-        const FEE_RATE = 0.001425*0.6;      // 手續費 0.1425%
-        const TAX_RATE_STOCK = 0.003;   // 股票交易稅 0.3%
-        const TAX_RATE_ETF = 0.001;     // ETF 交易稅 0.1%
-        const MIN_FEE = 20;             // 最低手續費 20 元
+    calculateSellFees(price, quantity, isETF = false, settings) {
+        const s = settings || this.getSettings();
+        const FEE_RATE = s.commissionRate * s.commissionDiscount; // 手續費率 × 折扣
+        const TAX_RATE_STOCK = 0.003;   // 股票交易稅 0.3%（法規固定值）
+        const TAX_RATE_ETF = 0.001;     // ETF 交易稅 0.1%（法規固定值）
+        const MIN_FEE = 20;             // 最低手續費 20 元（法規固定值）
 
         const amount = price * quantity * 1000; // 張數 * 1000 股
         const sellFee = Math.max(Math.round(amount * FEE_RATE), MIN_FEE);

@@ -404,53 +404,6 @@ const StockAPI = {
 
 // 簡易的模擬資料（當 API 無法使用時）
 const MockStockData = {
-    // 你的持股
-    '1717': { name: '長興', price: 62.9, previousClose: 63.8 },
-    '2303': { name: '聯電', price: 69.3, previousClose: 64.8 },
-    '2337': { name: '旺宏', price: 76.2, previousClose: 69.3 },
-    '2367': { name: '燿華', price: 48.5, previousClose: 44.1 },
-    '2374': { name: '佳能', price: 89.4, previousClose: 83.2 },
-    '2408': { name: '南亞科', price: 286, previousClose: 271.5 },
-    '3006': { name: '晶豪科', price: 156, previousClose: 142 },
-    '3653': { name: '健策', price: 2740, previousClose: 2795 },
-    '3715': { name: '定穎投控', price: 155.5, previousClose: 141.5 },
-    '5864': { name: '致和證', price: 23, previousClose: 21.8 },
-    '6285': { name: '啟碁', price: 157.5, previousClose: 155 },
-    '7610': { name: '聯友金屬-創', price: 193.5, previousClose: 189 },
-    '7871': { name: '安立璽榮-KY', price: 43.2, previousClose: 44.7 },
-    '8155': { name: '博智', price: 202.5, previousClose: 184.5 },
-    '8210': { name: '勤誠', price: 971, previousClose: 969 },
-    '8932': { name: '智通', price: 204, previousClose: 190 },
-    // Excel 裡的其他股票
-    '1513': { name: '中興電', price: 180, previousClose: 182 },
-    '2308': { name: '台達電', price: 450, previousClose: 445 },
-    '2324': { name: '仁寶', price: 32, previousClose: 33 },
-    '3037': { name: '欣興', price: 280, previousClose: 270 },
-    '3211': { name: '順達', price: 120, previousClose: 115 },
-    '3532': { name: '台勝科', price: 160, previousClose: 165 },
-    '6488': { name: '環球晶', price: 680, previousClose: 675 },
-    '7822': { name: '倍利科', price: 100, previousClose: 101 },
-    // 常見台股
-    '2330': { name: '台積電', price: 1755, previousClose: 1770 },
-    '2317': { name: '鴻海', price: 185, previousClose: 183 },
-    '2454': { name: '聯發科', price: 1350, previousClose: 1340 },
-    '2881': { name: '富邦金', price: 85, previousClose: 84 },
-    '2882': { name: '國泰金', price: 65, previousClose: 64 },
-    '2891': { name: '中信金', price: 32, previousClose: 31.5 },
-    '2412': { name: '中華電', price: 125, previousClose: 124 },
-    '2002': { name: '中鋼', price: 26, previousClose: 25.8 },
-    '1301': { name: '台塑', price: 95, previousClose: 94 },
-    '1303': { name: '南亞', price: 75, previousClose: 74 },
-    '2886': { name: '兆豐金', price: 45, previousClose: 44.5 },
-    '2884': { name: '玉山金', price: 28, previousClose: 27.8 },
-    '3008': { name: '大立光', price: 2300, previousClose: 2280 },
-    '2382': { name: '廣達', price: 320, previousClose: 315 },
-    '2357': { name: '華碩', price: 520, previousClose: 515 },
-    '3711': { name: '日月光投控', price: 170, previousClose: 168 },
-    '2379': { name: '瑞昱', price: 550, previousClose: 545 },
-    '3034': { name: '聯詠', price: 520, previousClose: 515 },
-    '2327': { name: '國巨', price: 580, previousClose: 575 },
-    '6505': { name: '台塑化', price: 75, previousClose: 74 },
-    '8210': { name: '勤誠', price: 971, previousClose: 969 },
-    '8932': { name: '智通', price: 204, previousClose: 190 }
+    // 示範資料：台積電
+    '2330': { name: '台積電', price: 1000, previousClose: 990 }
 };
