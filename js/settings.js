@@ -150,24 +150,69 @@ const Settings = {
         location.reload();
     },
 
-    // 3-3 Gist 同步（UI 骨架，Phase D 實作）
+    // 3-3 Gist 同步
     _renderGistSync() {
         const section = document.getElementById('gist-sync-section');
         if (!section) return;
 
-        section.innerHTML = `
+        const isConnected = typeof GistSync !== 'undefined' && GistSync.hasToken();
+        section.innerHTML = this._gistSyncHTML(isConnected);
+        this._bindGistHandlers();
+    },
+
+    _gistSyncHTML(isConnected) {
+        const gistId = (typeof GistSync !== 'undefined') ? GistSync.getGistId() : null;
+        const lastSync = (typeof GistSync !== 'undefined') ? GistSync.getLastSyncAt() : null;
+        const lastSyncDisplay = lastSync ? new Date(lastSync).toLocaleString('zh-TW') : '-';
+
+        if (isConnected) {
+            const username = localStorage.getItem('trading_gist_username') || '';
+            const gistLink = (gistId && username)
+                ? `<a href="https://gist.github.com/${username}/${gistId}" target="_blank" rel="noopener noreferrer">${gistId}</a>`
+                : (gistId || '-');
+
+            return `
+                <h3 class="settings-section-title">跨裝置同步（Gist）</h3>
+                <div class="settings-form">
+                    <div class="settings-gist-status">
+                        <div class="settings-gist-row">
+                            <span class="settings-gist-label">狀態</span>
+                            <span class="settings-gist-value" style="color:#27ae60">已連接（${username || '未知使用者'}）</span>
+                        </div>
+                        <div class="settings-gist-row">
+                            <span class="settings-gist-label">Gist</span>
+                            <span class="settings-gist-value">${gistLink}</span>
+                        </div>
+                        <div class="settings-gist-row">
+                            <span class="settings-gist-label">最後同步</span>
+                            <span id="gist-last-sync" class="settings-gist-value">${lastSyncDisplay}</span>
+                        </div>
+                    </div>
+                    <div class="settings-form-actions">
+                        <button id="gist-manual-sync" class="btn btn-primary">手動同步</button>
+                        <button id="gist-disconnect" class="btn btn-secondary">斷開連接</button>
+                    </div>
+                </div>
+                <div class="settings-gist-notice">
+                    <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                    <span>PAT 存於本地瀏覽器，不會上傳至任何伺服器。遇可疑情況請隨時前往 GitHub 撤銷（Revoke）。</span>
+                </div>`;
+        }
+
+        return `
             <h3 class="settings-section-title">跨裝置同步（Gist）</h3>
             <div class="settings-form">
                 <div class="form-group">
                     <label for="gist-pat">GitHub Personal Access Token</label>
                     <input type="password" id="gist-pat" placeholder="ghp_..." autocomplete="off">
                 </div>
+                <div id="gist-connect-error" style="color:#e74c3c;font-size:13px;display:none;margin-bottom:8px"></div>
                 <div class="settings-form-actions">
-                    <button id="gist-connect" class="btn btn-primary" onclick="alert('Gist 同步功能將在 Phase D 開放')">連接</button>
+                    <button id="gist-connect" class="btn btn-primary">連接</button>
                 </div>
                 <div class="settings-gist-status">
                     <div class="settings-gist-row">
-                        <span class="settings-gist-label">Gist ID</span>
+                        <span class="settings-gist-label">狀態</span>
                         <span id="gist-id-display" class="settings-gist-value">尚未連接</span>
                     </div>
                     <div class="settings-gist-row">
@@ -175,14 +220,96 @@ const Settings = {
                         <span id="gist-last-sync" class="settings-gist-value">-</span>
                     </div>
                 </div>
-                <div class="settings-form-actions">
-                    <button class="btn btn-secondary" disabled title="功能開發中">手動同步</button>
-                    <button class="btn btn-secondary" disabled title="功能開發中">斷開連接</button>
-                </div>
             </div>
             <div class="settings-gist-notice">
                 <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
                 <span>PAT 存於本地瀏覽器，不會上傳至任何伺服器。請到 GitHub Settings → Developer settings → Personal access tokens 產生，scope 只勾 <code>gist</code> 即可。遇可疑情況請隨時前往 GitHub 撤銷（Revoke）。</span>
             </div>`;
+    },
+
+    _bindGistHandlers() {
+        if (typeof GistSync === 'undefined') return;
+
+        // --- 未連接狀態：連接按鈕 ---
+        const connectBtn = document.getElementById('gist-connect');
+        if (connectBtn) {
+            connectBtn.addEventListener('click', async () => {
+                const input = document.getElementById('gist-pat');
+                const errorEl = document.getElementById('gist-connect-error');
+                const token = (input ? input.value : '').trim();
+
+                if (!token) {
+                    if (errorEl) { errorEl.textContent = '請輸入 Token'; errorEl.style.display = 'block'; }
+                    return;
+                }
+
+                connectBtn.textContent = '驗證中...';
+                connectBtn.disabled = true;
+
+                const result = await GistSync.verifyToken(token);
+                if (!result.ok) {
+                    connectBtn.textContent = '連接';
+                    connectBtn.disabled = false;
+                    if (errorEl) { errorEl.textContent = `Token 無效：${result.error}`; errorEl.style.display = 'block'; }
+                    return;
+                }
+
+                // Token OK
+                GistSync.setToken(token);
+                localStorage.setItem('trading_gist_username', result.username);
+
+                // 若無 gist_id，建立新 Gist
+                if (!GistSync.getGistId()) {
+                    connectBtn.textContent = '建立 Gist...';
+                    try {
+                        const created = await GistSync.createGist(GistSync._collectPayload());
+                        GistSync.setGistId(created.id);
+                        GistSync.setLastSyncAt(new Date().toISOString());
+                    } catch (e) {
+                        connectBtn.textContent = '連接';
+                        connectBtn.disabled = false;
+                        if (errorEl) { errorEl.textContent = `建立 Gist 失敗：${e.message}`; errorEl.style.display = 'block'; }
+                        return;
+                    }
+                }
+
+                // 重新渲染設定頁
+                this._renderGistSync();
+            });
+        }
+
+        // --- 已連接狀態：手動同步 ---
+        const manualBtn = document.getElementById('gist-manual-sync');
+        if (manualBtn) {
+            manualBtn.addEventListener('click', async () => {
+                manualBtn.textContent = '同步中...';
+                manualBtn.disabled = true;
+
+                const result = await GistSync.manualSync();
+
+                manualBtn.textContent = '手動同步';
+                manualBtn.disabled = false;
+
+                if (result.ok) {
+                    alert(`同步成功：${result.msg}`);
+                    // 更新最後同步時間顯示
+                    const el = document.getElementById('gist-last-sync');
+                    if (el) el.textContent = new Date().toLocaleString('zh-TW');
+                } else {
+                    alert(`同步失敗：${result.error}`);
+                }
+            });
+        }
+
+        // --- 已連接狀態：斷開連接 ---
+        const disconnectBtn = document.getElementById('gist-disconnect');
+        if (disconnectBtn) {
+            disconnectBtn.addEventListener('click', () => {
+                if (!confirm('確定要斷開 Gist 連接嗎？\n\n注意：你的 Gist 本身未刪除，可到 GitHub 手動移除。')) return;
+                GistSync.clearToken();
+                localStorage.removeItem('trading_gist_username');
+                this._renderGistSync();
+            });
+        }
     }
 };

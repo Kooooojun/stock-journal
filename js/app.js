@@ -297,6 +297,11 @@ async function _initApp() {
         }
     });
 
+    // GitHub Gist 雲端同步（Phase D）
+    if (typeof GistSync !== 'undefined') {
+        GistSync.initialSync().catch(e => console.warn('Initial sync failed:', e.message));
+    }
+
     console.log('股票記帳 App 已載入');
 }
 

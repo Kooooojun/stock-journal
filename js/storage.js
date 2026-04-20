@@ -17,6 +17,12 @@ const Storage = {
     // 儲存資料
     set(key, data) {
         localStorage.setItem(key, JSON.stringify(data));
+        // GistSync 寫入 hook（避免循環觸發）
+        if (typeof GistSync !== 'undefined' && GistSync.hasToken() &&
+            key !== GistSync.KEYS.LAST_SYNC && key !== GistSync.KEYS.LAST_LOCAL) {
+            GistSync.markLocalChange();
+            GistSync.scheduleUpload();
+        }
     },
 
     // 觸發全畫面重新整理 (從 Google Sheet 拉取最新資料)
