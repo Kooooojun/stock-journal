@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>股票記帳</title>
+    <!-- PWA -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="股票記帳">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <link rel="icon" type="image/png" href="icon-192.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="config.js"></script>
+</head>
+<body>
+    <!-- 簡單的密碼鎖定畫面 -->
+    <div id="auth-overlay" style="position:fixed; top:0; left:0; width:100%; height:100%; background:#2c3e50; z-index:999999; display:flex; justify-content:center; align-items:center; flex-direction:column; font-family:sans-serif;">
+        <div style="background:white; padding:30px; border-radius:12px; box-shadow:0 10px 25px rgba(0,0,0,0.2); text-align:center; max-width:80%; width:300px;">
+            <h2 style="margin-top:0; color:#2c3e50; font-size:24px;">登入股票記帳</h2>
+            <p style="color:#7f8c8d; margin-bottom:20px;">請輸入存取密碼</p>
+            <input type="password" id="auth-input" placeholder="請輸入密碼" style="width:100%; padding:12px; margin-bottom:15px; border:1px solid #ddd; border-radius:6px; box-sizing:border-box; font-size:16px;">
+            <button onclick="checkPassword()" style="width:100%; padding:12px; background:#3498db; color:white; border:none; border-radius:6px; font-size:16px; font-weight:bold; cursor:pointer; transition: background 0.3s;">進入系統</button>
+            <p id="auth-error" style="color:#e74c3c; display:none; margin-top:15px; margin-bottom:0; font-size:14px; font-weight:bold;">密碼錯誤！請重新輸入</p>
+        </div>
+    </div>
+    <script>
+        // 密碼從 config.js 的 APP_CONFIG 讀取（支援編輯者/閱覽者雙密碼）
+        const EDITOR_PASSWORD = (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.EDITOR_PASSWORD) ? APP_CONFIG.EDITOR_PASSWORD : 'please_set_config';
+        const VIEWER_PASSWORD = (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.VIEWER_PASSWORD) ? APP_CONFIG.VIEWER_PASSWORD : null;
+
+        // 全域角色變數：'editor' = 完整權限, 'viewer' = 唯讀
+        window.APP_ROLE = 'viewer';
+
+        // 檢查是否已經登入過
+        const savedRole = localStorage.getItem('trading_note_role_V2');
+        if (savedRole === 'editor' || savedRole === 'viewer') {
+            window.APP_ROLE = savedRole;
+            document.getElementById('auth-overlay').style.display = 'none';
+        }
+
+        function checkPassword() {
+            const input = document.getElementById('auth-input');
+            const error = document.getElementById('auth-error');
+            const pwd = input.value;
+
+            if (pwd === EDITOR_PASSWORD) {
+                // 編輯者登入 — 完整讀寫權限
+                window.APP_ROLE = 'editor';
+                localStorage.setItem('trading_note_role_V2', 'editor');
+                document.getElementById('auth-overlay').style.display = 'none';
+            } else if (VIEWER_PASSWORD && pwd === VIEWER_PASSWORD) {
+                // 閱覽者登入 — 唯讀模式
+                window.APP_ROLE = 'viewer';
+                localStorage.setItem('trading_note_role_V2', 'viewer');
+                document.getElementById('auth-overlay').style.display = 'none';
+            } else {
+                error.style.display = 'block';
+                input.value = '';
+                input.focus();
+                return;
+            }
+
+            // 登入後立即套用權限
+            applyRolePermissions();
+        }
+
+        // 根據角色隱藏/顯示編輯功能
+        function applyRolePermissions() {
+            if (window.APP_ROLE === 'viewer') {
+                document.body.classList.add('read-only-mode');
+            } else {
+                document.body.classList.remove('read-only-mode');
+            }
+        }
+
+        // 頁面載入後套用權限
+        if (savedRole) applyRolePermissions();
+
+        // 支援按 Enter 鍵送出密碼
+        document.getElementById('auth-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') checkPassword();
+        });
+    </script>
+    <header class="app-header">
+        <div class="header-content">
+            <div class="brand">
+                <div class="logo-icon">
+                    <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                </div>
+                <h1>股票記帳</h1>
+            </div>
+            <nav class="tabs">
+                <button class="tab-btn active" data-tab="portfolio">
+                    <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+                    <span>庫存</span>
+                </button>
+                <button class="tab-btn" data-tab="netvalue">
+                    <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
+                    <span>帳戶淨值</span>
+                </button>
+                <button class="tab-btn" data-tab="trades">
+                    <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"></line><line x1="18" y1="20" x2="18" y2="4"></line><line x1="6" y1="20" x2="6" y2="16"></line></svg>
+                    <span>交易紀錄</span>
+                </button>
+            </nav>
+            <div class="header-actions">
+                <button id="sync-data" class="btn btn-primary btn-small">
+                    <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"></path><path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path><path d="M3 22v-6h6"></path><path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path></svg>
+                    <span>同步</span>
+                </button>
+                <div class="dropdown">
+                    <button class="btn btn-secondary btn-small dropdown-toggle" onclick="this.nextElementSibling.classList.toggle('show')">
+                        <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                    </button>
+                    <div class="dropdown-menu" id="settingsDropdown">
+                        <button id="import-json" class="dropdown-item">
+                            <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                            匯入 JSON
+                        </button>
+                        <button id="export-json" class="dropdown-item">
+                            <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                            匯出 JSON
+                        </button>
+                        <button id="export-trades-csv" class="dropdown-item">
+                            <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                            匯出交易 CSV
+                        </button>
+                        <button id="export-netvalue-csv" class="dropdown-item">
+                            <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                            匯出淨值 CSV
+                        </button>
+                    </div>
+                </div>
+                <input type="file" id="import-file" accept=".json" style="display: none;">
+                <button id="logout-btn" class="btn btn-secondary btn-small" onclick="localStorage.removeItem('trading_note_role_V2'); location.reload();" title="登出 / 切換身分">
+                    <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                    <span>登出</span>
+                </button>
+            </div>
+        </div>
+    </header>
+    <div class="container main-content">
+
+        <!-- Page 1: Portfolio -->
+        <section id="portfolio" class="tab-content active">
+            <div class="portfolio-header">
+                <h2>股票庫存</h2>
+                <button id="refresh-prices" class="btn btn-primary">更新股價</button>
+            </div>
+
+            <div class="table-container">
+                <table id="portfolio-table">
+                    <thead>
+                        <tr>
+                            <th>股票</th>
+                            <th>代號</th>
+                            <th>%</th>
+                            <th>數量</th>
+                            <th>Chg%</th>
+                            <th>今日損益</th>
+                            <th>市值</th>
+                            <th>P/L</th>
+                            <th>現價</th>
+                            <th>成本</th>
+                            <th>昨收</th>
+                            <th>vs成本%</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="portfolio-body">
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="summary-section">
+                <div class="summary-row">
+                    <div class="summary-card summary-card--aux">
+                        <h3>部位摘要</h3>
+                        <div class="summary-grid">
+                            <div><span>Long:</span><span id="sum-long">0</span></div>
+                            <div><span>Short:</span><span id="sum-short">0</span></div>
+                            <div><span>Gross:</span><span id="sum-gross">0</span></div>
+                            <div><span>Net:</span><span id="sum-net">0</span></div>
+                        </div>
+                    </div>
+                    <div class="summary-card summary-card--primary">
+                        <h3>資金狀況</h3>
+                        <div class="summary-grid">
+                            <div><span>Total AUM:</span><span id="sum-aum">0</span></div>
+                            <div><span>庫存市值:</span><span id="sum-market">0</span></div>
+                            <div><span>庫存成本:</span><span id="sum-cost">0</span></div>
+                            <div><span>未實現損益:</span><span id="sum-unrealized">0</span></div>
+                            <div><span>初始資金:</span><span id="sum-initial">0</span></div>
+                        </div>
+                    </div>
+                    <div class="summary-card summary-card--aux">
+                        <h3>曝險比例</h3>
+                        <div class="summary-grid">
+                            <div><span>總曝險:</span><span id="sum-exposure">0%</span></div>
+                            <div><span>總使用資金:</span><span id="sum-used">0%</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="risk-table">
+                    <h3>風險計算 (Total AUM %)</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>5%</th>
+                                <th>8%</th>
+                                <th>10%</th>
+                                <th>12%</th>
+                                <th>15%</th>
+                                <th>20%</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td id="risk-5">0</td>
+                                <td id="risk-8">0</td>
+                                <td id="risk-10">0</td>
+                                <td id="risk-12">0</td>
+                                <td id="risk-15">0</td>
+                                <td id="risk-20">0</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="settings-section">
+                    <p class="caption">Total AUM = 最新建議帳戶淨值　|　初始資金 = 帳戶淨值當年度第一筆紀錄（今年 1/1 資金）</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Page 2: Net Value -->
+        <section id="netvalue" class="tab-content">
+            <div class="page-header">
+                <h2>帳戶淨值</h2>
+                <div class="page-header__actions">
+                    <button id="calc-netvalue" class="btn btn-secondary">計算今日淨值</button>
+                    <button id="add-netvalue" class="btn btn-primary">新增紀錄</button>
+                </div>
+            </div>
+            <section id="netvalue-summary" class="summary-card kpi-section">
+                <div class="kpi-row">
+                    <div class="kpi-item kpi-item--primary">
+                        <span class="kpi-item__label">計算淨值</span>
+                        <span class="kpi-item__value" id="nv-calculated">-</span>
+                    </div>
+                    <div class="kpi-item kpi-item--primary">
+                        <span class="kpi-item__label">與昨日相比</span>
+                        <span class="kpi-item__value" id="nv-daily-change">-</span>
+                    </div>
+                    <div class="kpi-item">
+                        <span class="kpi-item__label">初始資金 (1/1)</span>
+                        <span class="kpi-item__value" id="nv-initial">-</span>
+                    </div>
+                    <div class="kpi-item">
+                        <span class="kpi-item__label">未實現損益</span>
+                        <span class="kpi-item__value" id="nv-unrealized">-</span>
+                    </div>
+                    <div class="kpi-item">
+                        <span class="kpi-item__label">TWR 累計 %</span>
+                        <span class="kpi-item__value" id="nv-return-pct">-</span>
+                    </div>
+                    <div class="kpi-item">
+                        <span class="kpi-item__label">最大回撤 (MDD)</span>
+                        <span class="kpi-item__value negative" id="nv-mdd">-</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 資產曲線圖表 -->
+            <div class="chart-container">
+                <div class="chart-header">
+                    <h3 class="chart-title">資產曲線</h3>
+                    <div class="chart-range-selector" role="group" aria-label="圖表時間範圍">
+                        <button class="btn-range" type="button" data-range="1M" aria-pressed="false">1M</button>
+                        <button class="btn-range" type="button" data-range="3M" aria-pressed="false">3M</button>
+                        <button class="btn-range" type="button" data-range="6M" aria-pressed="false">6M</button>
+                        <button class="btn-range" type="button" data-range="YTD" aria-pressed="false">YTD</button>
+                        <button class="btn-range" type="button" data-range="1Y" aria-pressed="false">1Y</button>
+                        <button class="btn-range active" type="button" data-range="ALL" aria-pressed="true">ALL</button>
+                    </div>
+                </div>
+                <div class="chart-canvas-wrap">
+                    <canvas id="netvalue-chart"></canvas>
+                </div>
+            </div>
+
+            <div class="table-container">
+                <table id="netvalue-table">
+                    <thead>
+                        <tr>
+                            <th>日期</th>
+                            <th>淨值</th>
+                            <th>庫存水位%</th>
+                            <th>未實現損益</th>
+                            <th>與前日比</th>
+                            <th>TWR累計%</th>
+                            <th>大盤</th>
+                            <th>大盤漲跌%</th>
+                            <th>大盤累計%</th>
+                            <th>vs大盤%</th>
+                            <th>備註</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="netvalue-body">
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Page 3: Trades -->
+        <section id="trades" class="tab-content">
+            <div class="page-header">
+                <h2>交易紀錄</h2>
+                <div class="page-header__actions">
+                    <button id="toggle-filter" class="btn btn-secondary btn-small">
+                        <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+                        <span>篩選</span>
+                    </button>
+                    <button id="add-trade" class="btn btn-primary">新增交易</button>
+                </div>
+            </div>
+
+            <!-- 篩選器與彙整 (預設隱藏) -->
+            <div id="filter-container" class="filter-bar" style="display: none;">
+                <div class="filter-group">
+                    <label for="filter-ticker">搜尋股票 / 代號</label>
+                    <input type="text" id="filter-ticker" placeholder="例：2330 或 台積電">
+                </div>
+                <div class="filter-group">
+                    <label>日期範圍</label>
+                    <div class="filter-group__range">
+                        <input type="date" id="filter-start-date">
+                        <span>~</span>
+                        <input type="date" id="filter-end-date">
+                    </div>
+                </div>
+                <div class="filter-group filter-group--preset">
+                    <button class="btn btn-small btn-secondary preset-btn" data-range="7">最近一週</button>
+                    <button class="btn btn-small btn-secondary preset-btn" data-range="30">最近一個月</button>
+                    <button class="btn btn-small btn-secondary preset-btn" data-range="all">全部</button>
+                </div>
+                <div class="filter-summary">
+                    <div class="filter-summary__item">
+                        <div class="filter-summary__label">總損益</div>
+                        <div class="filter-summary__value" id="filter-sum-pl">-</div>
+                    </div>
+                    <div class="filter-summary__item">
+                        <div class="filter-summary__label">手續費</div>
+                        <div class="filter-summary__value" id="filter-sum-fee">-</div>
+                    </div>
+                    <div class="filter-summary__item">
+                        <div class="filter-summary__label">稅金</div>
+                        <div class="filter-summary__value" id="filter-sum-tax">-</div>
+                    </div>
+                    <div class="filter-summary__item">
+                        <div class="filter-summary__label">筆數</div>
+                        <div class="filter-summary__value" id="filter-count">-</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 交易勝率統計列 -->
+            <div id="trades-stat-bar" class="trades-stats">
+                <span class="trades-stats__label">交易統計</span>
+                <span class="trades-stats__main">勝率 <strong id="trades-winrate">-</strong></span>
+                <span class="trades-stats__aux">
+                    勝 <span id="trades-wins" class="positive">-</span>
+                    敗 <span id="trades-losses" class="negative">-</span>
+                    平 <span id="trades-breakeven">-</span>
+                    （共 <span id="trades-total-closed">-</span> 筆結清）
+                </span>
+                <span class="trades-stats__aux">平均持倉 <strong id="trades-avg-holding">-</strong> 天</span>
+            </div>
+
+            <div class="table-container">
+                <table id="trades-table">
+                    <thead>
+                        <tr>
+                            <th>日期</th>
+                            <th>買賣</th>
+                            <th>股票</th>
+                            <th>代號</th>
+                            <th>交易別</th>
+                            <th>數量</th>
+                            <th>價格</th>
+                            <th>金額</th>
+                            <th>手續費</th>
+                            <th>稅金</th>
+                            <th>損益</th>
+                            <th>原因</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="trades-body">
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    <!-- Modal for adding/editing -->
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <span class="modal-close">&times;</span>
+            <h3 id="modal-title">新增</h3>
+            <form id="modal-form">
+                <div id="modal-fields" class="modal-grid"></div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary modal-cancel">取消</button>
+                    <button type="submit" class="btn btn-primary">儲存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('click', function(event) {
+            const dropdown = document.querySelector('.dropdown-menu');
+            const toggle = document.querySelector('.dropdown-toggle');
+            if (dropdown && dropdown.classList.contains('show') && !event.target.closest('.dropdown')) {
+                dropdown.classList.remove('show');
+            }
+        });
+    </script>
+    <script src="js/api_client.js?v=6"></script>
+    <script src="js/stock_names.js?v=2"></script>
+    <script src="js/storage.js?v=8"></script>
+    <script src="js/api.js?v=4"></script>
+    <script src="js/portfolio.js?v=4"></script>
+    <script src="js/netValue.js?v=10"></script>
+    <script src="js/trades.js?v=7"></script>
+    <script src="js/app.js?v=5"></script>
+</body>
+</html>
