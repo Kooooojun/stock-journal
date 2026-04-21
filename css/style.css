@@ -1003,16 +1003,6 @@ tbody tr:hover {
     font-size: 0.75rem;
 }
 
-/* Auth overlay */
-#auth-overlay > div {
-    background: var(--bg-card) !important;
-    border: 1px solid var(--border);
-}
-
-#auth-overlay input {
-    font-family: inherit;
-}
-
 /* Responsive */
 @media (max-width: 768px) {
     .header-content {
@@ -1084,34 +1074,6 @@ tbody tr:hover {
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
-}
-
-/* Read-Only Mode */
-body.read-only-mode #add-trade,
-body.read-only-mode #add-netvalue,
-body.read-only-mode #calc-netvalue,
-body.read-only-mode #sync-data,
-body.read-only-mode #refresh-prices,
-body.read-only-mode .dropdown,
-body.read-only-mode #import-file,
-body.read-only-mode .action-btns {
-    display: none !important;
-}
-
-body.read-only-mode th:last-child,
-body.read-only-mode td:last-child {
-    display: none;
-}
-
-body.read-only-mode .brand::after {
-    content: '閱覽模式';
-    font-size: 0.7rem;
-    color: var(--warning);
-    background: rgba(217, 119, 6, 0.1);
-    padding: 2px 8px;
-    border-radius: var(--radius-full);
-    margin-left: 8px;
-    font-weight: 500;
 }
 
 /* ==============================

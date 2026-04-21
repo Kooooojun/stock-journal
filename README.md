@@ -57,7 +57,6 @@ stock-journal/
     ├── onboarding.js   # 首次使用引導精靈
     ├── storage.js      # localStorage CRUD + 庫存計算 + 手續費公式
     ├── api.js          # Yahoo Finance API 串接
-    ├── api_client.js   # （保留未使用的 API client wrapper）
     ├── portfolio.js    # Page 1: 庫存邏輯
     ├── netValue.js     # Page 2: 淨值邏輯
     ├── trades.js       # Page 3: 交易紀錄

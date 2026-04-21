@@ -25,25 +25,6 @@ const Storage = {
         }
     },
 
-    // 觸發全畫面重新整理 (從 Google Sheet 拉取最新資料)
-    async triggerAppRefresh() {
-        if (typeof ApiClient !== 'undefined' && typeof Portfolio !== 'undefined' && typeof NetValue !== 'undefined' && typeof Trades !== 'undefined') {
-            // 通常是 mutate 後接著 refresh，避免 loader 疊加與閃爍
-            const data = await ApiClient.fetchData({ showLoading: false });
-            if (data) {
-                if (data.trades) this.saveTrades(data.trades);
-                if (data.netValues) this.saveNetValues(data.netValues);
-                
-                Portfolio.loadData();
-                Portfolio.render();
-                NetValue.loadData();
-                NetValue.render();
-                Trades.loadData();
-                Trades.render();
-            }
-        }
-    },
-
     // 交易紀錄
     getTrades() {
         return this.get(this.KEYS.TRADES) || [];
@@ -257,31 +238,6 @@ const Storage = {
         trades.unshift(trade);
         this.saveTrades(trades);
 
-        // 同步到 Google Sheet
-        if (typeof ApiClient !== 'undefined') {
-            const rowData = [
-                trade.date || "",
-                trade.action || "",
-                trade.name || "",
-                trade.ticker || "",
-                trade.type || "現股",
-                trade.quantity || 0,
-                trade.price || 0,
-                amount,
-                trade.fee || 0,
-                trade.tax || 0,
-                trade.pl || "",
-                trade.plPercent || "",
-                trade.reason || ""
-            ];
-            const result = await ApiClient.mutateData('Transactions', 'add', rowData);
-            if (result && result.data && result.data.rowIndex) {
-                trade.rowIndex = result.data.rowIndex;
-                // 立即把 rowIndex 更新回 localStorage 中，之後編輯時可直接同步到遠端
-                this.saveTrades(trades);
-            }
-        }
-
         return trade;
     },
 
@@ -310,38 +266,12 @@ const Storage = {
 
             trades[index] = updatedTrade;
             this.saveTrades(trades);
-
-            // 同步到 Google Sheet
-            if (typeof ApiClient !== 'undefined' && updatedTrade.rowIndex) {
-                const rowData = [
-                    updatedTrade.date || "",
-                    updatedTrade.action || "",
-                    updatedTrade.name || "",
-                    updatedTrade.ticker || "",
-                    updatedTrade.type || "現股",
-                    updatedTrade.quantity || 0,
-                    updatedTrade.price || 0,
-                    amount,
-                    updatedTrade.fee || 0,
-                    updatedTrade.tax || 0,
-                    updatedTrade.pl || "",
-                    updatedTrade.plPercent || "",
-                    updatedTrade.reason || ""
-                ];
-                await ApiClient.mutateData('Transactions', 'update', rowData, id, updatedTrade.rowIndex);
-            }
         }
     },
 
     async deleteTrade(id) {
         const trades = this.getTrades();
-        const tradeToDelete = trades.find(t => t.id === id);
         this.saveTrades(trades.filter(t => t.id !== id));
-
-        // 同步到 Google Sheet
-        if (typeof ApiClient !== 'undefined' && tradeToDelete && tradeToDelete.rowIndex) {
-            await ApiClient.mutateData('Transactions', 'delete', [], id, tradeToDelete.rowIndex);
-        }
     },
 
     // 帳戶淨值
@@ -359,81 +289,6 @@ const Storage = {
         netValues.unshift(entry);
         this.saveNetValues(netValues);
 
-        // 同步到 Google Sheet
-        if (typeof ApiClient !== 'undefined') {
-            // 計算各項績效指標以同步到試算表
-            let dailyChange = 0;
-            let twr = 0;
-            let marketChange = 0;
-            let marketCumulative = 0;
-            let vsMarket = 0;
-
-            const sortedEntries = [...netValues].sort((a, b) => new Date(a.date) - new Date(b.date));
-            const latestDate = new Date(sortedEntries[sortedEntries.length - 1].date);
-            const currentYear = latestDate.getFullYear();
-            
-            // 找出今年第一筆大盤作為基準
-            const firstOfYear = sortedEntries.find(e => new Date(e.date).getFullYear() === currentYear);
-            const initialMarket = firstOfYear ? (parseFloat(firstOfYear.marketClose) || 0) : 0;
-            const currentMarket = parseFloat(entry.marketClose) || 0;
-
-            // 計算 TWR 累計
-            let factor = 1;
-            let prevNet = null;
-            let prevEntry = null;
-
-            for (const e of sortedEntries) {
-                const d = new Date(e.date);
-                if (d.getFullYear() !== currentYear) continue;
-                
-                const nv = Number(e.netValue) || 0;
-                const cf = Number(e.cashFlow) || 0;
-
-                if (prevNet === null) {
-                    prevNet = nv;
-                } else if (prevNet > 0) {
-                    const r = (nv - cf) / prevNet - 1;
-                    if (!isNaN(r)) factor *= (1 + r);
-                }
-
-                if (e.id === entry.id) {
-                    twr = (factor - 1) * 100;
-                    if (prevEntry) {
-                        dailyChange = nv - (Number(prevEntry.netValue) || 0) - cf;
-                        const pmc = Number(prevEntry.marketClose) || 0;
-                        marketChange = pmc ? ((currentMarket / pmc - 1) * 100) : 0;
-                    }
-                }
-                prevNet = nv;
-                prevEntry = e;
-            }
-
-            if (initialMarket) {
-                marketCumulative = ((currentMarket / initialMarket) - 1) * 100;
-                vsMarket = twr - marketCumulative;
-            }
-
-            const rowData = [
-                entry.date || "",
-                Number(entry.netValue) || 0,
-                Number(entry.inventoryRatio) || 0,
-                Number(entry.unrealizedPL) || 0,
-                Number(dailyChange.toFixed(0)), 
-                Number(entry.cashFlow) || 0,
-                (isNaN(twr) ? "0" : twr.toFixed(2)) + "%",
-                currentMarket || "",
-                (isNaN(marketChange) ? "0" : marketChange.toFixed(2)) + "%",
-                (isNaN(marketCumulative) ? "0" : marketCumulative.toFixed(2)) + "%",
-                (isNaN(vsMarket) ? "0" : vsMarket.toFixed(2)) + "%",
-                entry.note || ""
-            ];
-            const result = await ApiClient.mutateData('NetWorth', 'add', rowData);
-            if (result && result.data && result.data.rowIndex) {
-                entry.rowIndex = result.data.rowIndex;
-                this.saveNetValues(netValues);
-            }
-        }
-
         return entry;
     },
 
@@ -444,86 +299,12 @@ const Storage = {
             const updatedEntry = { ...netValues[index], ...updates };
             netValues[index] = updatedEntry;
             this.saveNetValues(netValues);
-
-            // 同步到 Google Sheet
-            if (typeof ApiClient !== 'undefined' && updatedEntry.rowIndex) {
-                // 重新計算績效指標
-                let dailyChange = 0;
-                let twr = 0;
-                let marketChange = 0;
-                let marketCumulative = 0;
-                let vsMarket = 0;
-
-                const sortedEntries = [...netValues].sort((a, b) => new Date(a.date) - new Date(b.date));
-                const latestDate = new Date(sortedEntries[sortedEntries.length - 1].date);
-                const currentYear = latestDate.getFullYear();
-                const firstOfYear = sortedEntries.find(e => new Date(e.date).getFullYear() === currentYear);
-                const initialMarket = firstOfYear ? (parseFloat(firstOfYear.marketClose) || 0) : 0;
-                const currentMarket = parseFloat(updatedEntry.marketClose) || 0;
-
-                let factor = 1;
-                let prevNet = null;
-                let prevEntry = null;
-
-                for (const e of sortedEntries) {
-                    const d = new Date(e.date);
-                    if (d.getFullYear() !== currentYear) continue;
-                    
-                    const nv = Number(e.netValue) || 0;
-                    const cf = Number(e.cashFlow) || 0;
-
-                    if (prevNet === null) {
-                        prevNet = nv;
-                    } else if (prevNet > 0) {
-                        const r = (nv - cf) / prevNet - 1;
-                        if (!isNaN(r)) factor *= (1 + r);
-                    }
-
-                    if (e.id === updatedEntry.id) {
-                        twr = (factor - 1) * 100;
-                        if (prevEntry) {
-                            dailyChange = nv - (Number(prevEntry.netValue) || 0) - cf;
-                            const pmc = Number(prevEntry.marketClose) || 0;
-                            marketChange = pmc ? ((currentMarket / pmc - 1) * 100) : 0;
-                        }
-                    }
-                    prevNet = nv;
-                    prevEntry = e;
-                }
-
-                if (initialMarket) {
-                    marketCumulative = ((currentMarket / initialMarket) - 1) * 100;
-                    vsMarket = twr - marketCumulative;
-                }
-
-                const rowData = [
-                    updatedEntry.date || "",
-                    Number(updatedEntry.netValue) || 0,
-                    Number(updatedEntry.inventoryRatio) || 0,
-                    Number(updatedEntry.unrealizedPL) || 0,
-                    Number(dailyChange.toFixed(0)), 
-                    Number(updatedEntry.cashFlow) || 0,
-                    (isNaN(twr) ? "0" : twr.toFixed(2)) + "%",
-                    currentMarket || "",
-                    (isNaN(marketChange) ? "0" : marketChange.toFixed(2)) + "%",
-                    (isNaN(marketCumulative) ? "0" : marketCumulative.toFixed(2)) + "%",
-                    (isNaN(vsMarket) ? "0" : vsMarket.toFixed(2)) + "%",
-                    updatedEntry.note || ""
-                ];
-                await ApiClient.mutateData('NetWorth', 'update', rowData, id, updatedEntry.rowIndex);
-            }
         }
     },
 
     async deleteNetValue(id) {
         const netValues = this.getNetValues();
-        const entryToDelete = netValues.find(n => n.id === id);
         this.saveNetValues(netValues.filter(n => n.id !== id));
-
-        // 同步到 Google Sheet
-        if (typeof ApiClient !== 'undefined' && entryToDelete && entryToDelete.rowIndex) {
-            await ApiClient.mutateData('NetWorth', 'delete', [], id, entryToDelete.rowIndex);
-        }
     },
 
     // 帳戶設定
@@ -546,11 +327,8 @@ const Storage = {
         return this.get(this.KEYS.PORTFOLIO) || {};
     },
 
-    savePortfolioCache(cache, skipRemote = false) {
+    savePortfolioCache(cache) {
         this.set(this.KEYS.PORTFOLIO, cache);
-        if (!skipRemote && typeof ApiClient !== 'undefined') {
-            ApiClient.mutateData('Settings', 'updateSettings', cache).catch(e => console.error("Cache sync failed", e));
-        }
     },
 
     // 計算買入手續費

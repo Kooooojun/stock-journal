@@ -134,31 +134,6 @@ function initModal() {
 
 // 匯出/匯入功能
 function initExportImport() {
-    // 雲端同步
-    const syncBtn = document.getElementById('sync-data');
-    if (syncBtn) {
-        syncBtn.addEventListener('click', async () => {
-            if (typeof ApiClient !== 'undefined') {
-                const data = await ApiClient.fetchData();
-                if (data) {
-                    if (data.trades) Storage.saveTrades(data.trades);
-                    if (data.netValues) Storage.saveNetValues(data.netValues);
-                    
-                    // 重新載入所有頁面資料
-                    Portfolio.loadData();
-                    Portfolio.render();
-                    NetValue.loadData();
-                    NetValue.render();
-                    Trades.loadData();
-                    Trades.render();
-                    alert('同步完成！');
-                }
-            } else {
-                alert('無法連線到同步伺服器，請稍後再試。');
-            }
-        });
-    }
-
     // 匯出 JSON
     document.getElementById('export-json').addEventListener('click', () => {
         Storage.exportToJSON();
@@ -213,89 +188,6 @@ async function _initApp() {
     NetValue.init();
     Trades.init();
     Settings.init();
-
-    // 從 Google Sheet 同步資料
-    if (typeof ApiClient !== 'undefined') {
-        const data = await ApiClient.fetchData();
-        if (data) {
-            let hasUpdates = false;
-            
-            if (data.trades) {
-                const localStr = JSON.stringify(Storage.getTrades());
-                const remoteStr = JSON.stringify(data.trades);
-                if (localStr !== remoteStr) {
-                    Storage.saveTrades(data.trades);
-                    hasUpdates = true;
-                }
-            }
-            if (data.netValues) {
-                const localStr = JSON.stringify(Storage.getNetValues());
-                const remoteStr = JSON.stringify(data.netValues);
-                if (localStr !== remoteStr) {
-                    Storage.saveNetValues(data.netValues);
-                    hasUpdates = true;
-                }
-            }
-            if (data.settings) {
-                const localStr = JSON.stringify(Storage.getPortfolioCache());
-                const remoteStr = JSON.stringify(data.settings);
-                if (localStr !== remoteStr) {
-                    Storage.savePortfolioCache(data.settings, true);
-                    hasUpdates = true;
-                }
-            }
-            
-            // 如果從雲端取得的資料與本地不同，立刻重新喧染畫面
-            if (hasUpdates) {
-                Portfolio.loadData();
-                Portfolio.render();
-                NetValue.loadData();
-                NetValue.render();
-                Trades.loadData();
-                Trades.render();
-            }
-        }
-    }
-
-    // 當網頁從背景切換回前景時，自動同步資料 (Auto-Sync on Visibility)
-    document.addEventListener('visibilitychange', async () => {
-        if (document.visibilityState === 'visible' && typeof ApiClient !== 'undefined') {
-            console.log('App is visible again, syncing data...');
-            // 背景回前景的同步盡量不打斷使用者操作（不顯示全螢幕 loader）
-            const data = await ApiClient.fetchData({ showLoading: false });
-            if (data) {
-                if (data.trades) {
-                    const localStr = JSON.stringify(Storage.getTrades());
-                    const remoteStr = JSON.stringify(data.trades);
-                    if (localStr !== remoteStr) {
-                        Storage.saveTrades(data.trades);
-                        Trades.loadData();
-                        Trades.render();
-                        Portfolio.loadData();
-                        Portfolio.render();
-                    }
-                }
-                if (data.netValues) {
-                    const localStr = JSON.stringify(Storage.getNetValues());
-                    const remoteStr = JSON.stringify(data.netValues);
-                    if (localStr !== remoteStr) {
-                        Storage.saveNetValues(data.netValues);
-                        NetValue.loadData();
-                        NetValue.render();
-                    }
-                }
-                if (data.settings) {
-                    const localStr = JSON.stringify(Storage.getPortfolioCache());
-                    const remoteStr = JSON.stringify(data.settings);
-                    if (localStr !== remoteStr) {
-                        Storage.savePortfolioCache(data.settings, true);
-                        Portfolio.loadData();
-                        Portfolio.render();
-                    }
-                }
-            }
-        }
-    });
 
     // GitHub Gist 雲端同步（Phase D）
     if (typeof GistSync !== 'undefined') {

@@ -16,77 +16,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="config.js"></script>
 </head>
 <body>
-    <!-- 簡單的密碼鎖定畫面 -->
-    <div id="auth-overlay" style="position:fixed; top:0; left:0; width:100%; height:100%; background:#2c3e50; z-index:999999; display:flex; justify-content:center; align-items:center; flex-direction:column; font-family:sans-serif;">
-        <div style="background:white; padding:30px; border-radius:12px; box-shadow:0 10px 25px rgba(0,0,0,0.2); text-align:center; max-width:80%; width:300px;">
-            <h2 style="margin-top:0; color:#2c3e50; font-size:24px;">登入股票記帳</h2>
-            <p style="color:#7f8c8d; margin-bottom:20px;">請輸入存取密碼</p>
-            <input type="password" id="auth-input" placeholder="請輸入密碼" style="width:100%; padding:12px; margin-bottom:15px; border:1px solid #ddd; border-radius:6px; box-sizing:border-box; font-size:16px;">
-            <button onclick="checkPassword()" style="width:100%; padding:12px; background:#3498db; color:white; border:none; border-radius:6px; font-size:16px; font-weight:bold; cursor:pointer; transition: background 0.3s;">進入系統</button>
-            <p id="auth-error" style="color:#e74c3c; display:none; margin-top:15px; margin-bottom:0; font-size:14px; font-weight:bold;">密碼錯誤！請重新輸入</p>
-        </div>
-    </div>
-    <script>
-        // 密碼從 config.js 的 APP_CONFIG 讀取（支援編輯者/閱覽者雙密碼）
-        const EDITOR_PASSWORD = (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.EDITOR_PASSWORD) ? APP_CONFIG.EDITOR_PASSWORD : 'please_set_config';
-        const VIEWER_PASSWORD = (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.VIEWER_PASSWORD) ? APP_CONFIG.VIEWER_PASSWORD : null;
-
-        // 全域角色變數：'editor' = 完整權限, 'viewer' = 唯讀
-        window.APP_ROLE = 'viewer';
-
-        // 檢查是否已經登入過
-        const savedRole = localStorage.getItem('trading_note_role_V2');
-        if (savedRole === 'editor' || savedRole === 'viewer') {
-            window.APP_ROLE = savedRole;
-            document.getElementById('auth-overlay').style.display = 'none';
-        }
-
-        function checkPassword() {
-            const input = document.getElementById('auth-input');
-            const error = document.getElementById('auth-error');
-            const pwd = input.value;
-
-            if (pwd === EDITOR_PASSWORD) {
-                // 編輯者登入 — 完整讀寫權限
-                window.APP_ROLE = 'editor';
-                localStorage.setItem('trading_note_role_V2', 'editor');
-                document.getElementById('auth-overlay').style.display = 'none';
-            } else if (VIEWER_PASSWORD && pwd === VIEWER_PASSWORD) {
-                // 閱覽者登入 — 唯讀模式
-                window.APP_ROLE = 'viewer';
-                localStorage.setItem('trading_note_role_V2', 'viewer');
-                document.getElementById('auth-overlay').style.display = 'none';
-            } else {
-                error.style.display = 'block';
-                input.value = '';
-                input.focus();
-                return;
-            }
-
-            // 登入後立即套用權限
-            applyRolePermissions();
-        }
-
-        // 根據角色隱藏/顯示編輯功能
-        function applyRolePermissions() {
-            if (window.APP_ROLE === 'viewer') {
-                document.body.classList.add('read-only-mode');
-            } else {
-                document.body.classList.remove('read-only-mode');
-            }
-        }
-
-        // 頁面載入後套用權限
-        if (savedRole) applyRolePermissions();
-
-        // 支援按 Enter 鍵送出密碼
-        document.getElementById('auth-input').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') checkPassword();
-        });
-    </script>
     <header class="app-header">
         <div class="header-content">
             <div class="brand">
@@ -114,10 +45,6 @@
                 </button>
             </nav>
             <div class="header-actions">
-                <button id="sync-data" class="btn btn-primary btn-small">
-                    <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"></path><path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path><path d="M3 22v-6h6"></path><path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path></svg>
-                    <span>同步</span>
-                </button>
                 <div class="dropdown">
                     <button class="btn btn-secondary btn-small dropdown-toggle" onclick="this.nextElementSibling.classList.toggle('show')">
                         <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
@@ -142,10 +69,6 @@
                     </div>
                 </div>
                 <input type="file" id="import-file" accept=".json" style="display: none;">
-                <button id="logout-btn" class="btn btn-secondary btn-small" onclick="localStorage.removeItem('trading_note_role_V2'); location.reload();" title="登出 / 切換身分">
-                    <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
-                    <span>登出</span>
-                </button>
             </div>
         </div>
     </header>
@@ -460,8 +383,7 @@
             }
         });
     </script>
-    <script src="js/api_client.js?v=6"></script>
-    <script src="js/stock_names.js?v=2"></script>
+<script src="js/stock_names.js?v=2"></script>
     <script src="js/storage.js?v=8"></script>
     <script src="js/gistSync.js"></script>
     <script src="js/onboarding.js?v=1"></script>
