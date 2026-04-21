@@ -1,11 +1,35 @@
 // storage.js - localStorage 資料管理
 
+// 一次性遷移：trading_* → sj_*
+// 原因：GitHub Pages user site 所有 project 共用 origin，舊 key prefix 會撞號
+(function migrateLegacyKeys() {
+    const map = {
+        trading_trades: 'sj_trades',
+        trading_netvalue: 'sj_netvalue',
+        trading_settings: 'sj_settings',
+        trading_portfolio: 'sj_portfolio',
+        trading_gist_token: 'sj_gist_token',
+        trading_gist_id: 'sj_gist_id',
+        trading_gist_last_sync: 'sj_gist_last_sync',
+        trading_gist_last_local: 'sj_gist_last_local',
+        trading_gist_username: 'sj_gist_username'
+    };
+    if (localStorage.getItem('sj_migrated_v1') === '1') return;
+    for (const [oldKey, newKey] of Object.entries(map)) {
+        const oldVal = localStorage.getItem(oldKey);
+        if (oldVal !== null && localStorage.getItem(newKey) === null) {
+            localStorage.setItem(newKey, oldVal);
+        }
+    }
+    localStorage.setItem('sj_migrated_v1', '1');
+})();
+
 const Storage = {
     KEYS: {
-        TRADES: 'trading_trades',
-        NETVALUE: 'trading_netvalue',
-        SETTINGS: 'trading_settings',
-        PORTFOLIO: 'trading_portfolio'
+        TRADES: 'sj_trades',
+        NETVALUE: 'sj_netvalue',
+        SETTINGS: 'sj_settings',
+        PORTFOLIO: 'sj_portfolio'
     },
 
     // 取得資料

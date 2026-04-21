@@ -2,10 +2,10 @@
 
 const GistSync = {
     KEYS: {
-        TOKEN: 'trading_gist_token',
-        GIST_ID: 'trading_gist_id',
-        LAST_SYNC: 'trading_gist_last_sync',
-        LAST_LOCAL: 'trading_gist_last_local'
+        TOKEN: 'sj_gist_token',
+        GIST_ID: 'sj_gist_id',
+        LAST_SYNC: 'sj_gist_last_sync',
+        LAST_LOCAL: 'sj_gist_last_local'
     },
 
     _debounceTimer: null,

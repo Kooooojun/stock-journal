@@ -142,6 +142,11 @@ const Settings = {
         if (!confirm('最後確認：即將清除所有資料並重新整理頁面，確定嗎？')) return;
 
         // 清除 localStorage 中的應用資料
+        localStorage.removeItem('sj_trades');
+        localStorage.removeItem('sj_netvalue');
+        localStorage.removeItem('sj_settings');
+        localStorage.removeItem('sj_portfolio');
+        // 同時清掉舊 key（若存在），避免下次啟動時 migration 把它們又搬回來
         localStorage.removeItem('trading_trades');
         localStorage.removeItem('trading_netvalue');
         localStorage.removeItem('trading_settings');
@@ -166,7 +171,7 @@ const Settings = {
         const lastSyncDisplay = lastSync ? new Date(lastSync).toLocaleString('zh-TW') : '-';
 
         if (isConnected) {
-            const username = localStorage.getItem('trading_gist_username') || '';
+            const username = localStorage.getItem('sj_gist_username') || '';
             const gistLink = (gistId && username)
                 ? `<a href="https://gist.github.com/${username}/${gistId}" target="_blank" rel="noopener noreferrer">${gistId}</a>`
                 : (gistId || '-');
@@ -256,7 +261,7 @@ const Settings = {
 
                 // Token OK
                 GistSync.setToken(token);
-                localStorage.setItem('trading_gist_username', result.username);
+                localStorage.setItem('sj_gist_username', result.username);
 
                 // 若無 gist_id，建立新 Gist
                 if (!GistSync.getGistId()) {
@@ -307,7 +312,7 @@ const Settings = {
             disconnectBtn.addEventListener('click', () => {
                 if (!confirm('確定要斷開 Gist 連接嗎？\n\n注意：你的 Gist 本身未刪除，可到 GitHub 手動移除。')) return;
                 GistSync.clearToken();
-                localStorage.removeItem('trading_gist_username');
+                localStorage.removeItem('sj_gist_username');
                 this._renderGistSync();
             });
         }
