@@ -392,11 +392,11 @@ const Trades = {
                     // 如果名稱欄位已有值且不是之前自動填入的，就不覆蓋
                     const currentName = nameInput.value.trim();
 
-                    // 先查本地模擬資料
+                    // 先查本地台股代號對照表
                     const cleanTicker = ticker.replace('.TW', '').replace('.TWO', '');
-                    if (MockStockData[cleanTicker]) {
+                    if (typeof window.TaiwanStockNames !== 'undefined' && window.TaiwanStockNames[cleanTicker]) {
                         if (!currentName) {
-                            nameInput.value = MockStockData[cleanTicker].name;
+                            nameInput.value = window.TaiwanStockNames[cleanTicker];
                         }
                         return;
                     }

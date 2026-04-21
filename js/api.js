@@ -401,9 +401,3 @@ const StockAPI = {
         }
     }
 };
-
-// 簡易的模擬資料（當 API 無法使用時）
-const MockStockData = {
-    // 示範資料：台積電
-    '2330': { name: '台積電', price: 1000, previousClose: 990 }
-};
