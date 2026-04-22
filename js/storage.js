@@ -1,35 +1,34 @@
 // storage.js - localStorage 資料管理
 
-// 一次性遷移：trading_* → sj_*
-// 原因：GitHub Pages user site 所有 project 共用 origin，舊 key prefix 會撞號
-(function migrateLegacyKeys() {
-    const map = {
-        trading_trades: 'sj_trades',
-        trading_netvalue: 'sj_netvalue',
-        trading_settings: 'sj_settings',
-        trading_portfolio: 'sj_portfolio',
-        trading_gist_token: 'sj_gist_token',
-        trading_gist_id: 'sj_gist_id',
-        trading_gist_last_sync: 'sj_gist_last_sync',
-        trading_gist_last_local: 'sj_gist_last_local',
-        trading_gist_username: 'sj_gist_username'
-    };
-    if (localStorage.getItem('sj_migrated_v1') === '1') return;
-    for (const [oldKey, newKey] of Object.entries(map)) {
-        const oldVal = localStorage.getItem(oldKey);
-        if (oldVal !== null && localStorage.getItem(newKey) === null) {
-            localStorage.setItem(newKey, oldVal);
-        }
-    }
-    localStorage.setItem('sj_migrated_v1', '1');
+// Path-based scope：同 origin 不同 repo 完全隔離
+// 例：kooooojun.github.io/stock-journal/       → sj_stockjournal
+//     kooooojun.github.io/stock-journal-friend/ → sj_stockjournalfriend
+// 這樣即使你用同一個瀏覽器在兩個 repo 間切換，localStorage 也各自乾淨。
+window.SJ_SCOPE = (function () {
+    const rawPath = (typeof location !== 'undefined' && location.pathname) || '/';
+    // 去除結尾的 index.html / index.htm，避免 `/foo/` 與 `/foo/index.html` 被視為不同空間
+    const normalized = rawPath.replace(/\/index\.html?$/i, '/');
+    const slug = normalized.replace(/[^a-zA-Z0-9]/g, '');
+    return 'sj_' + (slug || 'root');
 })();
 
 const Storage = {
     KEYS: {
-        TRADES: 'sj_trades',
-        NETVALUE: 'sj_netvalue',
-        SETTINGS: 'sj_settings',
-        PORTFOLIO: 'sj_portfolio'
+        TRADES: window.SJ_SCOPE + '_trades',
+        NETVALUE: window.SJ_SCOPE + '_netvalue',
+        SETTINGS: window.SJ_SCOPE + '_settings',
+        PORTFOLIO: window.SJ_SCOPE + '_portfolio'
+    },
+
+    // 清除本 scope 的所有 localStorage key（供「重置」按鈕使用）
+    clearAllScoped() {
+        const prefix = window.SJ_SCOPE + '_';
+        const toRemove = [];
+        for (let i = 0; i < localStorage.length; i++) {
+            const k = localStorage.key(i);
+            if (k && k.startsWith(prefix)) toRemove.push(k);
+        }
+        toRemove.forEach(k => localStorage.removeItem(k));
     },
 
     // 取得資料
@@ -144,7 +143,23 @@ const Storage = {
         }
 
         if (isOpen) {
-            return { fee: 0, tax: 0, pl: "", plPercent: "" };
+            // 開倉也要算手續費/交易稅，讓欄位顯示正確
+            // （原本回傳 0 會讓買入交易 fee 顯示為 "-"，彙整區手續費加總也會短計）
+            let openFee = 0;
+            let openTax = 0;
+            if (newTrade.type === '期貨') {
+                const perFee = this.getFuturesFee(newTrade.name);
+                openFee = perFee * quantity;
+                openTax = Math.round(amount * 0.00002); // 期交稅 0.002%
+            } else {
+                openFee = Math.max(Math.round(amount * 0.001425 * 0.6), 20);
+                // 現股/融資開倉方向必為「買」，不課證交稅
+                // 融券開倉方向為「賣」，須課證交稅
+                if (newTrade.type === '融券' && newTrade.action === '賣') {
+                    openTax = Math.round(amount * (isETF ? 0.001 : 0.003));
+                }
+            }
+            return { fee: openFee, tax: openTax, pl: "", plPercent: "" };
         } else {
             let openRecords = [];
             for (const t of symbolTrades) {
@@ -279,14 +294,35 @@ const Storage = {
             const settlement = this.calculateFifoClosing(updatedTrade, trades);
 
             updatedTrade.amount = amount;
-            const userFee = updatedTrade.fee !== undefined && updatedTrade.fee !== '' ? parseFloat(updatedTrade.fee) : null;
-            const userTax = updatedTrade.tax !== undefined && updatedTrade.tax !== '' ? parseFloat(updatedTrade.tax) : null;
-            updatedTrade.fee = userFee !== null && !isNaN(userFee) ? userFee : settlement.fee;
-            updatedTrade.tax = userTax !== null && !isNaN(userTax) ? userTax : settlement.tax;
-            
-            // 強制自動計算的損益與損益率（前提是有配對到開倉紀錄）
-            if (settlement.pl !== "") updatedTrade.pl = settlement.pl;
-            if (settlement.plPercent !== "") updatedTrade.plPercent = settlement.plPercent;
+
+            // Bug fix：只看本次 updates 帶了什麼
+            // - 非空字串 → 使用者手動填，保留
+            // - 空字串 '' → 使用者主動清空，回退自動計算
+            // 這跟 addTrade 的行為一致，避免編輯時把手動輸入的值強制蓋掉
+            const hasUserFee = updates.fee !== undefined && updates.fee !== '' && !isNaN(parseFloat(updates.fee));
+            const hasUserTax = updates.tax !== undefined && updates.tax !== '' && !isNaN(parseFloat(updates.tax));
+            const hasUserPl = updates.pl !== undefined && updates.pl !== '' && !isNaN(parseFloat(updates.pl));
+            const hasUserPlPct = updates.plPercent !== undefined && updates.plPercent !== '' && !isNaN(parseFloat(updates.plPercent));
+
+            updatedTrade.fee = hasUserFee ? parseFloat(updates.fee) : settlement.fee;
+            updatedTrade.tax = hasUserTax ? parseFloat(updates.tax) : settlement.tax;
+
+            if (hasUserPl) {
+                updatedTrade.pl = parseFloat(updates.pl);
+            } else if (settlement.pl !== "") {
+                updatedTrade.pl = settlement.pl;
+            } else {
+                // 開倉類（無平倉配對）→ 清空損益
+                updatedTrade.pl = "";
+            }
+
+            if (hasUserPlPct) {
+                updatedTrade.plPercent = parseFloat(updates.plPercent);
+            } else if (settlement.plPercent !== "") {
+                updatedTrade.plPercent = settlement.plPercent;
+            } else {
+                updatedTrade.plPercent = "";
+            }
 
             trades[index] = updatedTrade;
             this.saveTrades(trades);

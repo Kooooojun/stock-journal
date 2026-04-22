@@ -2,10 +2,10 @@
 
 const GistSync = {
     KEYS: {
-        TOKEN: 'sj_gist_token',
-        GIST_ID: 'sj_gist_id',
-        LAST_SYNC: 'sj_gist_last_sync',
-        LAST_LOCAL: 'sj_gist_last_local'
+        TOKEN: (window.SJ_SCOPE || 'sj') + '_gist_token',
+        GIST_ID: (window.SJ_SCOPE || 'sj') + '_gist_id',
+        LAST_SYNC: (window.SJ_SCOPE || 'sj') + '_gist_last_sync',
+        LAST_LOCAL: (window.SJ_SCOPE || 'sj') + '_gist_last_local'
     },
 
     _debounceTimer: null,
